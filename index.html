@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f4f6fb">
+  <title>数当てゲーム</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #20283b;
+      --muted: #6d7890;
+      --blue: #4258d6;
+      --blue-dark: #3045bd;
+      --line: #e4e8f1;
+      --surface: #ffffff;
+      --background: #f4f6fb;
+      --green: #147a53;
+      --red: #b34048;
+      font-family: "Yu Gothic UI", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      padding: 40px 18px;
+      color: var(--ink);
+      background:
+        radial-gradient(ellipse at 15% 0%, #e8ecff 0, transparent 38rem),
+        var(--background);
+    }
+
+    .app { width: min(100%, 720px); margin: 0 auto; }
+
+    header { margin: 0 0 22px; text-align: center; }
+    .eyebrow {
+      margin: 0 0 8px;
+      color: var(--blue);
+      font-size: .78rem;
+      font-weight: 800;
+      letter-spacing: .15em;
+    }
+    h1 { margin: 0; font-size: clamp(2rem, 7vw, 3rem); letter-spacing: .04em; }
+    .subtitle { margin: 10px 0 0; color: var(--muted); }
+
+    .card {
+      overflow: hidden;
+      border: 1px solid rgba(223, 228, 239, .9);
+      border-radius: 22px;
+      background: var(--surface);
+      box-shadow: 0 18px 55px rgba(41, 55, 100, .10);
+    }
+
+    .rules { padding: 22px 26px; border-bottom: 1px solid var(--line); }
+    .rules h2 { margin: 0 0 10px; font-size: 1rem; }
+    .rules ul { display: grid; gap: 6px; margin: 0; padding-left: 1.25rem; color: var(--muted); font-size: .92rem; }
+
+    .setup, .play { padding: 26px; }
+    .setup-row { display: flex; align-items: end; gap: 12px; }
+    label { display: grid; gap: 8px; font-size: .9rem; font-weight: 700; }
+    select, input {
+      min-height: 48px;
+      border: 1px solid #cfd6e5;
+      border-radius: 11px;
+      background: #fff;
+      color: var(--ink);
+      font: inherit;
+      font-size: 1rem;
+    }
+    select { min-width: 120px; padding: 0 14px; }
+    input { width: 100%; padding: 0 14px; letter-spacing: .08em; }
+    input:focus, select:focus { outline: 3px solid rgba(66, 88, 214, .18); border-color: var(--blue); }
+
+    button {
+      min-height: 48px;
+      padding: 0 20px;
+      border: 0;
+      border-radius: 11px;
+      background: var(--blue);
+      color: white;
+      font: inherit;
+      font-weight: 750;
+      cursor: pointer;
+      transition: background .15s ease, transform .15s ease;
+    }
+    button:hover { background: var(--blue-dark); }
+    button:active { transform: translateY(1px); }
+    button:focus-visible { outline: 3px solid #aeb8ff; outline-offset: 3px; }
+    button.secondary { border: 1px solid var(--line); background: #fff; color: var(--ink); }
+    button.secondary:hover { background: #f5f6fb; }
+
+    .play-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+    .play-heading h2 { margin: 0; font-size: 1.2rem; }
+    .stats { display: flex; gap: 8px; color: var(--muted); font-size: .84rem; }
+    .stat { padding: 7px 10px; border-radius: 999px; background: #f2f4fa; white-space: nowrap; }
+
+    .guess-form { display: flex; gap: 10px; }
+    .guess-form input { flex: 1; min-width: 0; }
+    .message { min-height: 1.5em; margin: 10px 2px 0; color: var(--red); font-size: .9rem; }
+    .message.success { color: var(--green); font-weight: 700; }
+
+    .history-wrap { margin-top: 20px; }
+    .history-wrap h3 { margin: 0 0 9px; font-size: .92rem; }
+    .history { display: grid; gap: 8px; max-height: 330px; overflow: auto; padding-right: 4px; }
+    .history-empty { margin: 0; padding: 18px; border: 1px dashed #d8deeb; border-radius: 12px; color: var(--muted); text-align: center; font-size: .9rem; }
+    .row { display: grid; grid-template-columns: 42px 1fr auto; align-items: center; gap: 12px; padding: 11px 14px; border: 1px solid var(--line); border-radius: 12px; }
+    .turn { color: var(--muted); font-size: .8rem; }
+    .digits { font-variant-numeric: tabular-nums; font-size: 1.08rem; font-weight: 800; letter-spacing: .11em; }
+    .result { color: var(--blue); font-size: .9rem; font-weight: 750; white-space: nowrap; }
+    .row.invalid .result { color: var(--red); }
+    .finish { margin-top: 18px; text-align: center; }
+    [hidden] { display: none !important; }
+
+    @media (max-width: 520px) {
+      body { padding: 24px 12px; }
+      .rules, .setup, .play { padding: 20px; }
+      .setup-row { align-items: stretch; flex-direction: column; }
+      .setup-row select, .setup-row button { width: 100%; }
+      .play-heading { align-items: flex-start; flex-direction: column; }
+      .stats { flex-wrap: wrap; }
+      .guess-form { flex-direction: column; }
+      .guess-form button { width: 100%; }
+      .row { grid-template-columns: 32px 1fr auto; gap: 7px; padding: 10px; }
+      .digits { font-size: 1rem; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header>
+      <p class="eyebrow">NUMBER PUZZLE</p>
+      <h1>数当てゲーム</h1>
+      <p class="subtitle">数字と位置を推理して、答えを当てよう。</p>
+    </header>
+
+    <section class="card" aria-label="数当てゲーム">
+      <div class="rules">
+        <h2>ルール</h2>
+        <ul>
+          <li>数字は0〜9。同じ数字は使われません。</li>
+          <li>Hitは数字と位置が一致、Biteは数字だけ一致です。</li>
+          <li>間違った入力1回につき5秒のペナルティです。</li>
+        </ul>
+      </div>
+
+      <section class="setup" id="setup">
+        <div class="setup-row">
+          <label for="rank">数字の桁数
+            <select id="rank">
+              <option value="1">1桁</option><option value="2">2桁</option>
+              <option value="3">3桁</option><option value="4">4桁</option>
+              <option value="5" selected>5桁</option><option value="6">6桁</option>
+              <option value="7">7桁</option><option value="8">8桁</option>
+              <option value="9">9桁</option><option value="10">10桁</option>
+            </select>
+          </label>
+          <button id="startButton" type="button">ゲーム開始</button>
+        </div>
+      </section>
+
+      <section class="play" id="play" hidden>
+        <div class="play-heading">
+          <h2 id="gameTitle">5桁の数字を当ててください</h2>
+          <div class="stats" aria-live="polite">
+            <span class="stat">回答 <strong id="count">0</strong>回</span>
+            <span class="stat">経過 <strong id="elapsed">0</strong>秒</span>
+            <span class="stat">ペナルティ <strong id="penalty">0</strong>秒</span>
+          </div>
+        </div>
+
+        <form class="guess-form" id="guessForm">
+          <label for="guess" hidden>予想する数字</label>
+          <input id="guess" type="text" inputmode="numeric" autocomplete="off" spellcheck="false" placeholder="数字を入力">
+          <button id="guessButton" type="submit">予想する</button>
+        </form>
+        <p class="message" id="message" role="status" aria-live="polite"></p>
+
+        <div class="history-wrap">
+          <h3>これまでの予想</h3>
+          <div class="history" id="history">
+            <p class="history-empty">予想すると、ここに結果が表示されます。</p>
+          </div>
+        </div>
+        <div class="finish" id="finish" hidden>
+          <button class="secondary" id="againButton" type="button">もう一度遊ぶ</button>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    "use strict";
+
+    const PENALTY_SECONDS = 5;
+    const rankSelect = document.querySelector("#rank");
+    const startButton = document.querySelector("#startButton");
+    const setup = document.querySelector("#setup");
+    const play = document.querySelector("#play");
+    const gameTitle = document.querySelector("#gameTitle");
+    const guessForm = document.querySelector("#guessForm");
+    const guessInput = document.querySelector("#guess");
+    const guessButton = document.querySelector("#guessButton");
+    const message = document.querySelector("#message");
+    const history = document.querySelector("#history");
+    const countLabel = document.querySelector("#count");
+    const elapsedLabel = document.querySelector("#elapsed");
+    const penaltyLabel = document.querySelector("#penalty");
+    const finish = document.querySelector("#finish");
+    const againButton = document.querySelector("#againButton");
+
+    let answer = "";
+    let rank = 5;
+    let count = 0;
+    let wrongCount = 0;
+    let startedAt = 0;
+    let timerId = null;
+    let finished = false;
+
+    function createAnswer(digitCount) {
+      const digits = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
+      for (let i = digits.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [digits[i], digits[j]] = [digits[j], digits[i]];
+      }
+      return digits.slice(0, digitCount).join("");
+    }
+
+    function startGame() {
+      rank = Number(rankSelect.value);
+      answer = createAnswer(rank);
+      count = 0;
+      wrongCount = 0;
+      finished = false;
+      startedAt = Date.now();
+
+      countLabel.textContent = "0";
+      elapsedLabel.textContent = "0";
+      penaltyLabel.textContent = "0";
+      gameTitle.textContent = `${rank}桁の数字を当ててください`;
+      message.textContent = "";
+      message.classList.remove("success");
+      history.replaceChildren();
+      const empty = document.createElement("p");
+      empty.className = "history-empty";
+      empty.textContent = "予想すると、ここに結果が表示されます。";
+      history.append(empty);
+      finish.hidden = true;
+      guessInput.maxLength = String(rank);
+      guessInput.value = "";
+
+      setup.hidden = true;
+      play.hidden = false;
+      guessInput.focus();
+      updateClock();
+      clearInterval(timerId);
+      timerId = setInterval(updateClock, 250);
+    }
+
+    function updateClock() {
+      if (!startedAt || finished) return;
+      elapsedLabel.textContent = String(Math.floor((Date.now() - startedAt) / 1000));
+    }
+
+    function isValidGuess(value) {
+      if (value.length !== rank || !/^\d+$/.test(value)) return false;
+      return new Set(value).size === rank;
+    }
+
+    function countHits(secret, guess) {
+      let hits = 0;
+      for (let i = 0; i < secret.length; i++) {
+        if (secret[i] === guess[i]) hits++;
+      }
+      return hits;
+    }
+
+    function countBites(secret, guess) {
+      let bites = 0;
+      for (let i = 0; i < secret.length; i++) {
+        for (let j = 0; j < guess.length; j++) {
+          if (i !== j && secret[i] === guess[j]) bites++;
+        }
+      }
+      return bites;
+    }
+
+    function addHistory(value, result, invalid = false) {
+      const empty = history.querySelector(".history-empty");
+      if (empty) empty.remove();
+
+      const row = document.createElement("div");
+      row.className = invalid ? "row invalid" : "row";
+      const turn = document.createElement("span");
+      turn.className = "turn";
+      turn.textContent = `${count}回目`;
+      const digits = document.createElement("span");
+      digits.className = "digits";
+      digits.textContent = value || "（空欄）";
+      const outcome = document.createElement("span");
+      outcome.className = "result";
+      outcome.textContent = result;
+      row.append(turn, digits, outcome);
+      history.prepend(row);
+    }
+
+    function submitGuess(event) {
+      event.preventDefault();
+      if (finished) return;
+
+      const guess = guessInput.value.trim();
+      count++;
+      countLabel.textContent = String(count);
+
+      if (!isValidGuess(guess)) {
+        wrongCount++;
+        penaltyLabel.textContent = String(wrongCount * PENALTY_SECONDS);
+        message.textContent = `0〜9の数字を重複なしで${rank}桁入力してください。`;
+        message.classList.remove("success");
+        addHistory(guess, `無効（+${PENALTY_SECONDS}秒）`, true);
+        guessInput.select();
+        return;
+      }
+
+      const hits = countHits(answer, guess);
+      const bites = countBites(answer, guess);
+      message.textContent = `${hits}Hit ${bites}Bite`;
+      message.classList.remove("success");
+      addHistory(guess, `${hits}Hit ${bites}Bite`);
+
+      if (hits === rank) {
+        finishGame();
+      } else {
+        wrongCount++;
+        penaltyLabel.textContent = String(wrongCount * PENALTY_SECONDS);
+      }
+      guessInput.value = "";
+      guessInput.focus();
+    }
+
+    function finishGame() {
+      finished = true;
+      clearInterval(timerId);
+      const elapsed = Math.floor((Date.now() - startedAt) / 1000);
+      const total = elapsed + wrongCount * PENALTY_SECONDS;
+      elapsedLabel.textContent = String(elapsed);
+      penaltyLabel.textContent = String(wrongCount * PENALTY_SECONDS);
+      message.textContent = `正解！ 答えは${answer}です。総プレイ時間は${total}秒でした。`;
+      message.classList.add("success");
+      guessInput.disabled = true;
+      guessButton.disabled = true;
+      finish.hidden = false;
+      againButton.focus();
+    }
+
+    function backToSetup() {
+      clearInterval(timerId);
+      guessInput.disabled = false;
+      guessButton.disabled = false;
+      play.hidden = true;
+      setup.hidden = false;
+      startButton.focus();
+    }
+
+    startButton.addEventListener("click", startGame);
+    guessForm.addEventListener("submit", submitGuess);
+    againButton.addEventListener("click", backToSetup);
+  </script>
+</body>
+</html>
